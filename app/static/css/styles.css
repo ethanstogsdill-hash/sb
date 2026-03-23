@@ -1,0 +1,58 @@
+/* Custom overrides for Tailwind CDN */
+.bg-gray-750 {
+    background-color: #2d3748;
+}
+
+/* Toast animations */
+.toast {
+    animation: slideIn 0.3s ease-out;
+}
+
+.toast.fade-out {
+    animation: slideOut 0.3s ease-in forwards;
+}
+
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideOut {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(100%); opacity: 0; }
+}
+
+/* Inline edit input */
+.inline-edit {
+    background: transparent;
+    border: 1px solid #4a5568;
+    border-radius: 4px;
+    padding: 2px 6px;
+    color: #e2e8f0;
+    width: 140px;
+}
+
+.inline-edit:focus {
+    outline: none;
+    border-color: #63b3ed;
+}
+
+/* Number coloring */
+.text-profit { color: #48bb78; }
+.text-loss { color: #fc8181; }
+
+/* Spinner for buttons */
+.btn-loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+/* Status dot pulse */
+.pulse {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
