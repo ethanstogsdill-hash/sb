@@ -23,7 +23,7 @@ def main():
 
     # Use 'start' command on Windows — subprocess.Popen doesn't work for Chrome CDP
     profile_abs = os.path.abspath(profile_dir)
-    cmd = f'start "" "{CHROME_PATH}" --remote-debugging-port={cdp_port} --user-data-dir="{profile_abs}" --no-first-run --no-default-browser-check --window-position=-2000,-2000 "{site_url}"'
+    cmd = f'start "" "{CHROME_PATH}" --remote-debugging-port={cdp_port} --user-data-dir="{profile_abs}" --no-first-run --no-default-browser-check "{site_url}"'
     os.system(cmd)
 
     # Wait for Chrome to start and CDP to be ready
@@ -48,23 +48,49 @@ def main():
             page.wait_for_load_state("networkidle", timeout=60000)
             page.wait_for_timeout(3000)
 
+            # Wait for Cloudflare challenge to resolve BEFORE trying login
+            for attempt in range(20):
+                title = page.title().lower()
+                url = page.url.lower()
+                print(f"DEBUG: attempt={attempt} title='{page.title()}' url='{page.url}'", file=sys.stderr)
+                if "moment" in title or "checking" in title or "challenge" in url or "cloudflare" in title:
+                    print("DEBUG: Cloudflare challenge detected, waiting...", file=sys.stderr)
+                    time.sleep(5)
+                    continue
+                break
+            else:
+                print(json.dumps({"error": "Cloudflare challenge not resolved after 100s. Run once with visible Chrome to solve manually."}), file=sys.stderr)
+                sys.exit(1)
+
+            page.wait_for_load_state("networkidle", timeout=30000)
+            page.wait_for_timeout(2000)
+
             # Login if needed
             if "login" in page.url.lower():
+                # Wait for the login form to actually appear in DOM
+                try:
+                    page.locator("#ctl00_ContentSectionMisc_txtUser").wait_for(state="visible", timeout=30000)
+                except Exception:
+                    # Dump page info for debugging
+                    print(f"DEBUG: Login form not found. URL={page.url} Title={page.title()}", file=sys.stderr)
+                    print(f"DEBUG: Page HTML (first 2000 chars): {page.content()[:2000]}", file=sys.stderr)
+                    print(json.dumps({"error": f"Login form not found on page: {page.url}"}), file=sys.stderr)
+                    sys.exit(1)
+
                 page.locator("#ctl00_ContentSectionMisc_txtUser").fill(username)
                 page.locator("#ctl00_ContentSectionMisc_txtPassword").fill(password)
                 page.locator("a.btn-login").click()
                 page.wait_for_timeout(5000)
 
-                # Check for Cloudflare
+                # Check if Cloudflare appeared after login click
                 title = page.title()
                 if "moment" in title.lower():
-                    # Wait for CF to resolve (may need manual intervention on first run)
                     for _ in range(12):
                         time.sleep(5)
                         if "moment" not in page.title().lower():
                             break
                     else:
-                        print(json.dumps({"error": "Cloudflare challenge not resolved. Run once with --headed to solve manually."}), file=sys.stderr)
+                        print(json.dumps({"error": "Cloudflare challenge after login not resolved."}), file=sys.stderr)
                         sys.exit(1)
 
                 page.wait_for_load_state("networkidle", timeout=30000)
