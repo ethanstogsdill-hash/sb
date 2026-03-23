@@ -50,8 +50,24 @@
 
     <!-- Main Content -->
     <main class="max-w-7xl mx-auto px-6 pb-8">
-        <!-- Weekly View Section -->
-        <section class="mb-8">
+        <!-- Tab Bar -->
+        <div class="flex gap-1 mb-6 border-b border-gray-700">
+            <button onclick="switchTab('weekly')" id="tab-weekly"
+                class="tab-btn px-5 py-2.5 text-sm font-medium rounded-t-lg border-b-2 border-blue-500 text-white bg-gray-800">
+                Weekly View
+            </button>
+            <button onclick="switchTab('profiles')" id="tab-profiles"
+                class="tab-btn px-5 py-2.5 text-sm font-medium rounded-t-lg border-b-2 border-transparent text-gray-400 hover:text-gray-200">
+                Player Profiles
+            </button>
+            <button onclick="switchTab('payments')" id="tab-payments"
+                class="tab-btn px-5 py-2.5 text-sm font-medium rounded-t-lg border-b-2 border-transparent text-gray-400 hover:text-gray-200">
+                Payments
+            </button>
+        </div>
+
+        <!-- Weekly View Tab -->
+        <section id="section-weekly">
             <div class="flex items-center justify-between mb-4">
                 <div class="flex items-center gap-4">
                     <h2 class="text-xl font-semibold">Weekly View</h2>
@@ -105,33 +121,28 @@
             </div>
         </section>
 
-        <!-- Agents Section (collapsed) -->
-        <section class="mb-8">
-            <details>
-                <summary class="text-xl font-semibold cursor-pointer mb-4">Agents / Players (All-Time)</summary>
-                <div class="bg-gray-800 rounded-lg border border-gray-700 overflow-x-auto">
-                    <table class="w-full text-sm">
-                        <thead class="bg-gray-750">
-                            <tr class="border-b border-gray-700">
-                                <th class="px-4 py-3 text-left">Account ID</th>
-                                <th class="px-4 py-3 text-left">Account Name</th>
-                                <th class="px-4 py-3 text-left">Real Name</th>
-                                <th class="px-4 py-3 text-right">Win/Loss</th>
-                                <th class="px-4 py-3 text-right">Balance</th>
-                                <th class="px-4 py-3 text-right">Action</th>
-                                <th class="px-4 py-3 text-left">Last Scraped</th>
-                            </tr>
-                        </thead>
-                        <tbody id="agents-tbody">
-                            <tr><td colspan="7" class="px-4 py-8 text-center text-gray-500">No agents loaded. Click "Refresh Now" to scrape.</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </details>
+        <!-- Player Profiles Tab -->
+        <section id="section-profiles" style="display: none;">
+            <h2 class="text-xl font-semibold mb-4">Player Profiles</h2>
+            <div class="bg-gray-800 rounded-lg border border-gray-700 overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-750">
+                        <tr class="border-b border-gray-700">
+                            <th class="px-4 py-3 text-left">Account ID</th>
+                            <th class="px-4 py-3 text-left">Account Name</th>
+                            <th class="px-4 py-3 text-left">Real Name</th>
+                            <th class="px-4 py-3 text-left">Telegram</th>
+                        </tr>
+                    </thead>
+                    <tbody id="profiles-tbody">
+                        <tr><td colspan="4" class="px-4 py-8 text-center text-gray-500">No players loaded.</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </section>
 
-        <!-- Payments Section -->
-        <section>
+        <!-- Payments Tab -->
+        <section id="section-payments" style="display: none;">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-xl font-semibold">Payments</h2>
                 <div class="flex items-center gap-3">

@@ -91,6 +91,23 @@ function formatWeekLabel(weekStart) {
     }
 }
 
+// Tab switching
+let currentTab = 'weekly';
+function switchTab(tabName) {
+    currentTab = tabName;
+    const tabs = ['weekly', 'profiles', 'payments'];
+    tabs.forEach(t => {
+        document.getElementById(`section-${t}`).style.display = t === tabName ? '' : 'none';
+        const btn = document.getElementById(`tab-${t}`);
+        if (t === tabName) {
+            btn.className = 'tab-btn px-5 py-2.5 text-sm font-medium rounded-t-lg border-b-2 border-blue-500 text-white bg-gray-800';
+        } else {
+            btn.className = 'tab-btn px-5 py-2.5 text-sm font-medium rounded-t-lg border-b-2 border-transparent text-gray-400 hover:text-gray-200';
+        }
+    });
+    if (tabName === 'profiles') renderProfiles();
+}
+
 // Polling loop
 let pollInterval;
 function startPolling() {

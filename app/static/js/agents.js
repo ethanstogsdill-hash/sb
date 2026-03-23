@@ -9,9 +9,13 @@ async function loadAgents() {
 }
 
 function renderAgents() {
-    const tbody = document.getElementById("agents-tbody");
+    // no-op: profiles tab handles display now
+}
+
+function renderProfiles() {
+    const tbody = document.getElementById("profiles-tbody");
     if (!allAgents.length) {
-        tbody.innerHTML = '<tr><td colspan="7" class="px-4 py-8 text-center text-gray-500">No agents loaded. Click "Refresh Now" to scrape.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-8 text-center text-gray-500">No players loaded.</td></tr>';
         return;
     }
 
@@ -22,13 +26,15 @@ function renderAgents() {
             <td class="px-4 py-2">
                 <input type="text" class="inline-edit" value="${esc(a.real_name || "")}"
                     placeholder="Enter name..."
-                    onchange="updateRealName(${a.id}, this.value)"
+                    onchange="updateAgentProfile(${a.id}, 'real_name', this.value)"
                     onkeydown="if(event.key==='Enter') this.blur()">
             </td>
-            <td class="px-4 py-2 text-right ${numClass(a.win_loss)}">${fmt(a.win_loss)}</td>
-            <td class="px-4 py-2 text-right">${fmt(a.balance)}</td>
-            <td class="px-4 py-2 text-right">${fmt(a.action)}</td>
-            <td class="px-4 py-2 text-xs text-gray-500">${a.last_scraped_at || "—"}</td>
+            <td class="px-4 py-2">
+                <input type="text" class="inline-edit" value="${esc(a.telegram || "")}"
+                    placeholder="@username"
+                    onchange="updateAgentProfile(${a.id}, 'telegram', this.value)"
+                    onkeydown="if(event.key==='Enter') this.blur()">
+            </td>
         </tr>
     `).join("");
 }
@@ -41,16 +47,19 @@ function esc(str) {
     return div.innerHTML;
 }
 
-// Update real name via API
-async function updateRealName(id, name) {
+// Update agent profile field via API
+async function updateAgentProfile(id, field, value) {
     try {
         await api(`/api/agents/${id}`, {
             method: "PATCH",
-            body: JSON.stringify({ real_name: name }),
+            body: JSON.stringify({ [field]: value }),
         });
-        toast("Name updated", "success");
+        // Update local state so weekly view stays in sync
+        const agent = allAgents.find(a => a.id === id);
+        if (agent) agent[field] = value;
+        toast(field === 'telegram' ? "Telegram updated" : "Name updated", "success");
     } catch (e) {
-        toast("Failed to update name: " + e.message, "error");
+        toast("Failed to update: " + e.message, "error");
     }
 }
 
