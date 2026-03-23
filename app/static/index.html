@@ -174,7 +174,13 @@
 
         <!-- Bets Tab -->
         <section id="section-bets" style="display: none;">
-            <h2 class="text-xl font-semibold mb-4">Bets</h2>
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-semibold">Bets</h2>
+                <button onclick="triggerScrape()" id="bets-scrape-btn"
+                    class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-sm font-medium transition">
+                    Refresh Now
+                </button>
+            </div>
 
             <!-- Stats Bar -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">

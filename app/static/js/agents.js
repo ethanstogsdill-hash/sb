@@ -72,13 +72,13 @@ async function updateAgentProfile(id, field, value) {
 
 // Trigger manual scrape
 async function triggerScrape() {
-    const btn = document.getElementById("scrape-btn");
-    btn.classList.add("btn-loading");
-    btn.textContent = "Scraping...";
+    const btns = [document.getElementById("scrape-btn"), document.getElementById("bets-scrape-btn")].filter(Boolean);
+    btns.forEach(b => { b.classList.add("btn-loading"); b.textContent = "Scraping..."; });
     try {
         const data = await api("/api/agents/scrape", { method: "POST" });
         const betMsg = data.bet_count ? `, ${data.bet_count} bets` : "";
-        toast(`Scraped ${data.count} agents${betMsg}`, "success");
+        const newMsg = data.new_bets ? ` (${data.new_bets} new → Telegram)` : "";
+        toast(`Scraped ${data.count} agents${betMsg}${newMsg}`, "success");
         await loadAgents();
         await loadDashboard();
         await loadWeeks();
@@ -86,8 +86,7 @@ async function triggerScrape() {
     } catch (e) {
         toast("Scrape failed: " + e.message, "error");
     } finally {
-        btn.classList.remove("btn-loading");
-        btn.textContent = "Refresh Now";
+        btns.forEach(b => { b.classList.remove("btn-loading"); b.textContent = "Refresh Now"; });
         loadScrapeStatus();
     }
 }
