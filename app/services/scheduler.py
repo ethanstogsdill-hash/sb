@@ -13,8 +13,10 @@ async def _scrape_loop():
         try:
             from app.services.scraper import scrape_agents
             from app.database import upsert_agents, log_scrape
+            from app.utils import compute_week_start
             agents = await scrape_agents()
-            count = await upsert_agents(agents)
+            week_start = compute_week_start()
+            count = await upsert_agents(agents, week_start=week_start)
             await log_scrape("agents", "success", f"Auto-scraped {count} agents", count)
             logger.info(f"Auto-scrape: {count} agents updated")
         except Exception as e:

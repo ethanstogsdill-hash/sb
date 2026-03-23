@@ -20,11 +20,12 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Sportsbook Dashboard", lifespan=lifespan)
 
 # Routers
-from app.routers import agents, payments, dashboard, gmail  # noqa: E402
+from app.routers import agents, payments, dashboard, gmail, weeks  # noqa: E402
 app.include_router(agents.router, prefix="/api/agents", tags=["agents"])
 app.include_router(payments.router, prefix="/api/payments", tags=["payments"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"])
 app.include_router(gmail.router, prefix="/api/gmail", tags=["gmail"])
+app.include_router(weeks.router, prefix="/api/weeks", tags=["weeks"])
 
 # Static files
 static_dir = Path(__file__).parent / "static"

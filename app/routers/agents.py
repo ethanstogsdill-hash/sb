@@ -27,8 +27,10 @@ async def trigger_scrape():
     _scrape_running = True
     try:
         from app.services.scraper import scrape_agents
+        from app.utils import compute_week_start
         agents_data = await scrape_agents()
-        count = await db.upsert_agents(agents_data)
+        week_start = compute_week_start()
+        count = await db.upsert_agents(agents_data, week_start=week_start)
         await db.log_scrape("agents", "success", f"Scraped {count} agents", count)
         return {"status": "success", "count": count}
     except Exception as e:

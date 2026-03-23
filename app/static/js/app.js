@@ -1,5 +1,7 @@
 // Global state
 let allAgents = [];
+let availableWeeks = [];
+let selectedWeek = null;
 
 // API helper
 async function api(path, options = {}) {
@@ -76,6 +78,19 @@ async function checkGmailStatus() {
     }
 }
 
+// Format week label for dropdown
+function formatWeekLabel(weekStart) {
+    try {
+        const start = new Date(weekStart + "T00:00:00");
+        const end = new Date(start);
+        end.setDate(end.getDate() + 6);
+        const opts = { month: "short", day: "numeric" };
+        return `${start.toLocaleDateString("en-US", opts)} – ${end.toLocaleDateString("en-US", opts)}, ${start.getFullYear()}`;
+    } catch {
+        return weekStart;
+    }
+}
+
 // Polling loop
 let pollInterval;
 function startPolling() {
@@ -84,12 +99,14 @@ function startPolling() {
     loadPayments();
     checkGmailStatus();
     loadScrapeStatus();
+    loadWeeks();
 
     pollInterval = setInterval(() => {
         loadDashboard();
         loadAgents();
         loadPayments();
         loadScrapeStatus();
+        loadWeeks();
     }, 30000);
 }
 

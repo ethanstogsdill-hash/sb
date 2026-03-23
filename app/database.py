@@ -37,6 +37,17 @@ CREATE TABLE IF NOT EXISTS scrape_log (
     records_affected INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS weekly_snapshots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent_id INTEGER NOT NULL,
+    week_start TEXT NOT NULL,
+    win_loss REAL DEFAULT 0,
+    amount_paid REAL DEFAULT 0,
+    scraped_at TEXT,
+    FOREIGN KEY (agent_id) REFERENCES agents(id),
+    UNIQUE(agent_id, week_start)
+);
 """
 
 
@@ -61,7 +72,7 @@ async def init_db():
 
 # --- Agent CRUD ---
 
-async def upsert_agents(agents_data: list[dict]):
+async def upsert_agents(agents_data: list[dict], week_start: str | None = None):
     db = await get_db()
     try:
         for agent in agents_data:
@@ -83,6 +94,22 @@ async def upsert_agents(agents_data: list[dict]):
                 "action": agent.get("action", 0),
                 "raw_data": json.dumps(agent.get("raw_data", {})),
             })
+
+            # Also upsert weekly snapshot if week_start provided
+            if week_start:
+                await db.execute("""
+                    INSERT INTO weekly_snapshots (agent_id, week_start, win_loss, scraped_at)
+                    SELECT id, :week_start, :win_loss, datetime('now')
+                    FROM agents WHERE account_id = :account_id
+                    ON CONFLICT(agent_id, week_start) DO UPDATE SET
+                        win_loss = excluded.win_loss,
+                        scraped_at = excluded.scraped_at
+                """, {
+                    "week_start": week_start,
+                    "win_loss": agent.get("win_loss", 0),
+                    "account_id": agent.get("account_id", ""),
+                })
+
         await db.commit()
         return len(agents_data)
     finally:
@@ -200,5 +227,70 @@ async def get_last_scrape(run_type: str):
         )
         row = await cursor.fetchone()
         return dict(row) if row else None
+    finally:
+        await db.close()
+
+
+# --- Weekly Snapshots ---
+
+async def get_weekly_snapshots(week_start: str):
+    db = await get_db()
+    try:
+        cursor = await db.execute("""
+            SELECT ws.id, ws.agent_id, ws.week_start, ws.win_loss, ws.amount_paid, ws.scraped_at,
+                   a.account_id, a.account_name, a.real_name
+            FROM weekly_snapshots ws
+            JOIN agents a ON ws.agent_id = a.id
+            WHERE ws.week_start = ?
+            ORDER BY a.account_name
+        """, (week_start,))
+        rows = await cursor.fetchall()
+        return [dict(row) for row in rows]
+    finally:
+        await db.close()
+
+
+async def get_available_weeks():
+    db = await get_db()
+    try:
+        cursor = await db.execute(
+            "SELECT DISTINCT week_start FROM weekly_snapshots ORDER BY week_start DESC"
+        )
+        rows = await cursor.fetchall()
+        return [row["week_start"] for row in rows]
+    finally:
+        await db.close()
+
+
+async def update_payment(snapshot_id: int, amount_paid: float):
+    db = await get_db()
+    try:
+        await db.execute(
+            "UPDATE weekly_snapshots SET amount_paid = ? WHERE id = ?",
+            (amount_paid, snapshot_id)
+        )
+        await db.commit()
+    finally:
+        await db.close()
+
+
+async def get_weekly_summary(week_start: str):
+    db = await get_db()
+    try:
+        cursor = await db.execute("""
+            SELECT
+                COUNT(*) as players,
+                COALESCE(SUM(win_loss), 0) as net_wl,
+                COALESCE(SUM(CASE WHEN win_loss < 0 THEN ABS(win_loss) ELSE 0 END), 0) as total_owed_to_us,
+                COALESCE(SUM(CASE WHEN win_loss > 0 THEN win_loss ELSE 0 END), 0) as total_we_owe,
+                COALESCE(SUM(amount_paid), 0) as total_paid
+            FROM weekly_snapshots
+            WHERE week_start = ?
+        """, (week_start,))
+        row = await cursor.fetchone()
+        return dict(row) if row else {
+            "players": 0, "net_wl": 0, "total_owed_to_us": 0,
+            "total_we_owe": 0, "total_paid": 0
+        }
     finally:
         await db.close()

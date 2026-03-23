@@ -22,3 +22,7 @@ class DashboardSummary(BaseModel):
     total_action: float = 0
     net_win_loss: float = 0
     unmatched_payments: int = 0
+
+
+class PaymentUpdate(BaseModel):
+    amount_paid: float

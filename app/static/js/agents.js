@@ -64,6 +64,7 @@ async function triggerScrape() {
         toast(`Scraped ${data.count} agents`, "success");
         await loadAgents();
         await loadDashboard();
+        await loadWeeks();
     } catch (e) {
         toast("Scrape failed: " + e.message, "error");
     } finally {

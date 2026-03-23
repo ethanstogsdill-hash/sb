@@ -50,10 +50,16 @@
 
     <!-- Main Content -->
     <main class="max-w-7xl mx-auto px-6 pb-8">
-        <!-- Agents Section -->
+        <!-- Weekly View Section -->
         <section class="mb-8">
             <div class="flex items-center justify-between mb-4">
-                <h2 class="text-xl font-semibold">Agents / Players</h2>
+                <div class="flex items-center gap-4">
+                    <h2 class="text-xl font-semibold">Weekly View</h2>
+                    <select id="week-select" onchange="onWeekChange(this.value)"
+                        class="bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-sm text-gray-200">
+                        <option value="">No weeks available</option>
+                    </select>
+                </div>
                 <div class="flex items-center gap-3">
                     <span id="scrape-status" class="text-xs text-gray-500"></span>
                     <button onclick="triggerScrape()" id="scrape-btn"
@@ -62,24 +68,66 @@
                     </button>
                 </div>
             </div>
+
+            <!-- Weekly Stats Bar -->
+            <div class="grid grid-cols-3 gap-4 mb-4">
+                <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                    <p class="text-sm text-gray-400">Players</p>
+                    <p id="week-stat-players" class="text-2xl font-bold">0</p>
+                </div>
+                <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                    <p class="text-sm text-gray-400">Net Win/Loss</p>
+                    <p id="week-stat-wl" class="text-2xl font-bold">$0</p>
+                </div>
+                <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                    <p class="text-sm text-gray-400">Collection Progress</p>
+                    <p id="week-stat-collection" class="text-2xl font-bold">$0.00</p>
+                </div>
+            </div>
+
+            <!-- Weekly Player Table -->
             <div class="bg-gray-800 rounded-lg border border-gray-700 overflow-x-auto">
                 <table class="w-full text-sm">
                     <thead class="bg-gray-750">
                         <tr class="border-b border-gray-700">
-                            <th class="px-4 py-3 text-left">Account ID</th>
-                            <th class="px-4 py-3 text-left">Account Name</th>
+                            <th class="px-4 py-3 text-left">Account</th>
                             <th class="px-4 py-3 text-left">Real Name</th>
                             <th class="px-4 py-3 text-right">Win/Loss</th>
-                            <th class="px-4 py-3 text-right">Balance</th>
-                            <th class="px-4 py-3 text-right">Action</th>
-                            <th class="px-4 py-3 text-left">Last Scraped</th>
+                            <th class="px-4 py-3 text-right">Owed</th>
+                            <th class="px-4 py-3 text-right">Paid</th>
+                            <th class="px-4 py-3 text-right">Remaining</th>
                         </tr>
                     </thead>
-                    <tbody id="agents-tbody">
-                        <tr><td colspan="7" class="px-4 py-8 text-center text-gray-500">No agents loaded. Click "Refresh Now" to scrape.</td></tr>
+                    <tbody id="weekly-tbody">
+                        <tr><td colspan="6" class="px-4 py-8 text-center text-gray-500">No weekly data. Click "Refresh Now" to scrape.</td></tr>
                     </tbody>
                 </table>
             </div>
+        </section>
+
+        <!-- Agents Section (collapsed) -->
+        <section class="mb-8">
+            <details>
+                <summary class="text-xl font-semibold cursor-pointer mb-4">Agents / Players (All-Time)</summary>
+                <div class="bg-gray-800 rounded-lg border border-gray-700 overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-750">
+                            <tr class="border-b border-gray-700">
+                                <th class="px-4 py-3 text-left">Account ID</th>
+                                <th class="px-4 py-3 text-left">Account Name</th>
+                                <th class="px-4 py-3 text-left">Real Name</th>
+                                <th class="px-4 py-3 text-right">Win/Loss</th>
+                                <th class="px-4 py-3 text-right">Balance</th>
+                                <th class="px-4 py-3 text-right">Action</th>
+                                <th class="px-4 py-3 text-left">Last Scraped</th>
+                            </tr>
+                        </thead>
+                        <tbody id="agents-tbody">
+                            <tr><td colspan="7" class="px-4 py-8 text-center text-gray-500">No agents loaded. Click "Refresh Now" to scrape.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </details>
         </section>
 
         <!-- Payments Section -->
@@ -119,5 +167,6 @@
     <script src="/static/js/dashboard.js"></script>
     <script src="/static/js/agents.js"></script>
     <script src="/static/js/payments.js"></script>
+    <script src="/static/js/weeks.js"></script>
 </body>
 </html>
