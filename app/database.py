@@ -330,10 +330,27 @@ async def get_weekly_summary(week_start: str):
 # --- Bets CRUD ---
 
 async def upsert_bets(bets_data: list[dict]):
+    """Upsert bets and return {"count": N, "new_ticket_ids": [...], "new_bets": [...]}."""
     db = await get_db()
     try:
+        # Find which ticket_ids already exist
+        incoming_ids = [b.get("ticket_id", "") for b in bets_data if b.get("ticket_id")]
+        existing_ids = set()
+        if incoming_ids:
+            placeholders = ",".join("?" for _ in incoming_ids)
+            cursor = await db.execute(
+                f"SELECT ticket_id FROM bets WHERE ticket_id IN ({placeholders})",
+                incoming_ids,
+            )
+            existing_ids = {row["ticket_id"] for row in await cursor.fetchall()}
+
         count = 0
+        new_ticket_ids = []
+        new_bets = []
         for bet in bets_data:
+            ticket_id = bet.get("ticket_id", "")
+            is_new = ticket_id and ticket_id not in existing_ids
+
             # Resolve agent_id from player_id
             cursor = await db.execute(
                 "SELECT id FROM agents WHERE account_id = ?",
@@ -352,7 +369,7 @@ async def upsert_bets(bets_data: list[dict]):
                     win_amount = excluded.win_amount,
                     scraped_at = excluded.scraped_at
             """, {
-                "ticket_id": bet.get("ticket_id", ""),
+                "ticket_id": ticket_id,
                 "player_id": bet.get("player_id", ""),
                 "agent_id": agent_id,
                 "placed_at": bet.get("placed_at", ""),
@@ -365,8 +382,12 @@ async def upsert_bets(bets_data: list[dict]):
                 "raw_data": json.dumps(bet),
             })
             count += 1
+            if is_new:
+                new_ticket_ids.append(ticket_id)
+                new_bets.append(bet)
+
         await db.commit()
-        return count
+        return {"count": count, "new_ticket_ids": new_ticket_ids, "new_bets": new_bets}
     finally:
         await db.close()
 

@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -7,11 +8,13 @@ _tasks: list[asyncio.Task] = []
 
 
 async def _scrape_loop():
-    """Scrape agents every 15 minutes."""
+    """Scrape agents and bets, send Telegram alerts for new bets."""
+    interval = settings.bet_check_interval * 60
     while True:
-        await asyncio.sleep(15 * 60)
+        await asyncio.sleep(interval)
         try:
             from app.services.scraper import scrape_all
+            from app.services.telegram import send_bet_alerts
             from app.database import upsert_agents, upsert_bets, log_scrape
             from app.utils import compute_week_start
             data = await scrape_all()
@@ -19,9 +22,14 @@ async def _scrape_loop():
             wagers_data = data["wagers"]
             week_start = compute_week_start()
             count = await upsert_agents(agents_data, week_start=week_start)
-            bet_count = await upsert_bets(wagers_data) if wagers_data else 0
+            bet_result = await upsert_bets(wagers_data) if wagers_data else {"count": 0, "new_bets": []}
+            bet_count = bet_result["count"]
+            new_bets = bet_result.get("new_bets", [])
             await log_scrape("agents", "success", f"Auto-scraped {count} agents, {bet_count} bets", count)
-            logger.info(f"Auto-scrape: {count} agents, {bet_count} bets updated")
+            logger.info(f"Auto-scrape: {count} agents, {bet_count} bets ({len(new_bets)} new)")
+
+            if new_bets:
+                await send_bet_alerts(new_bets)
         except Exception as e:
             from app.database import log_scrape
             await log_scrape("agents", "error", f"Auto-scrape failed: {e}")
@@ -51,7 +59,7 @@ async def start_scheduler():
     """Start background loops."""
     _tasks.append(asyncio.create_task(_scrape_loop()))
     _tasks.append(asyncio.create_task(_gmail_loop()))
-    logger.info("Scheduler started: scrape@15min, gmail@10min")
+    logger.info(f"Scheduler started: scrape@{settings.bet_check_interval}min, gmail@10min")
 
 
 async def stop_scheduler():

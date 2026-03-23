@@ -33,9 +33,16 @@ async def trigger_scrape():
         wagers_data = data["wagers"]
         week_start = compute_week_start()
         count = await db.upsert_agents(agents_data, week_start=week_start)
-        bet_count = await db.upsert_bets(wagers_data) if wagers_data else 0
+        bet_result = await db.upsert_bets(wagers_data) if wagers_data else {"count": 0, "new_bets": []}
+        bet_count = bet_result["count"]
+        new_bets = bet_result.get("new_bets", [])
         await db.log_scrape("agents", "success", f"Scraped {count} agents, {bet_count} bets", count)
-        return {"status": "success", "count": count, "bet_count": bet_count}
+
+        if new_bets:
+            from app.services.telegram import send_bet_alerts
+            await send_bet_alerts(new_bets)
+
+        return {"status": "success", "count": count, "bet_count": bet_count, "new_bets": len(new_bets)}
     except Exception as e:
         await db.log_scrape("agents", "error", str(e))
         raise HTTPException(status_code=500, detail=str(e))
