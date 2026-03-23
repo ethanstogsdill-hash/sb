@@ -1,4 +1,5 @@
 """Standalone scrape script — launches native Chrome via CDP to bypass Cloudflare."""
+import hashlib
 import json
 import re
 import sys
@@ -151,7 +152,15 @@ def main():
                 except Exception:
                     pass
 
-            print(json.dumps(agents))
+            # Scrape individual wagers
+            wagers = []
+            try:
+                wagers = scrape_wagers(page)
+                print(f"DEBUG: Scraped {len(wagers)} wagers", file=sys.stderr)
+            except Exception as e:
+                print(f"DEBUG: Wager scrape failed: {e}", file=sys.stderr)
+
+            print(json.dumps({"agents": agents, "wagers": wagers}))
             browser.close()
 
     finally:
@@ -288,6 +297,140 @@ def merge_data(agents: list[dict], balance_data: list[dict]) -> list[dict]:
         if "win_loss" in extra and agent["win_loss"] == 0:
             agent["win_loss"] = extra["win_loss"]
     return agents
+
+
+def scrape_wagers(page) -> list[dict]:
+    """Navigate to Wagers Live page and scrape individual bet records."""
+    # Click Reports → Wagers → Wagers Live
+    try:
+        wager_link = page.locator("a[href*='Wager']").first
+        wager_link.click()
+        page.wait_for_timeout(3000)
+        page.wait_for_load_state("networkidle", timeout=15000)
+
+        # Look for Wagers Live sub-link
+        live_link = page.locator("a[href*='WagersLive'], a[href*='wagerlive'], a[href*='WagerLive']").first
+        if live_link.is_visible():
+            live_link.click()
+            page.wait_for_timeout(3000)
+            page.wait_for_load_state("networkidle", timeout=15000)
+    except Exception as e:
+        print(f"DEBUG: Wager navigation error: {e}", file=sys.stderr)
+        # Try direct navigation via evaluate
+        try:
+            page.evaluate("""
+                const links = [...document.querySelectorAll('a')];
+                const wl = links.find(a => /wager.*live/i.test(a.textContent) || /WagersLive/i.test(a.href));
+                if (wl) wl.click();
+            """)
+            page.wait_for_timeout(5000)
+            page.wait_for_load_state("networkidle", timeout=15000)
+        except Exception as e2:
+            print(f"DEBUG: Wager fallback navigation error: {e2}", file=sys.stderr)
+            return []
+
+    print(f"DEBUG: Wager page URL: {page.url}", file=sys.stderr)
+
+    wagers = []
+    tables = page.locator("table").all()
+
+    for table in tables:
+        rows = table.locator("tr").all()
+        if len(rows) < 2:
+            continue
+
+        header_cells = rows[0].locator("th, td").all()
+        headers = [c.inner_text().strip().lower() for c in header_cells]
+
+        # Fuzzy column matching
+        col_map = {}
+        for i, h in enumerate(headers):
+            if "ticket" in h or h == "#" or h == "no":
+                col_map["ticket_id"] = i
+            elif "date" in h or "time" in h:
+                col_map.setdefault("placed_at", i)
+            elif "player" in h or "account" in h:
+                col_map["player_id"] = i
+            elif "sport" in h:
+                col_map["sport"] = i
+            elif "desc" in h or "event" in h or "selection" in h:
+                col_map["description"] = i
+            elif "type" in h or "wager" in h:
+                col_map["bet_type"] = i
+            elif "risk" in h or "stake" in h:
+                col_map["risk"] = i
+            elif "win" in h and "loss" not in h:
+                col_map["win_amount"] = i
+            elif "result" in h or "status" in h:
+                col_map["result"] = i
+
+        # Need at least player + one value column to consider this a wagers table
+        if "player_id" not in col_map:
+            continue
+
+        print(f"DEBUG: Wager table headers={headers} col_map={col_map}", file=sys.stderr)
+
+        for r in range(1, len(rows)):
+            cells = rows[r].locator("td").all()
+            if len(cells) < 3:
+                continue
+
+            def get_cell(key):
+                idx = col_map.get(key)
+                if idx is not None and idx < len(cells):
+                    return cells[idx].inner_text().strip()
+                return ""
+
+            player_id = get_cell("player_id")
+            if not player_id:
+                continue
+
+            ticket_id = get_cell("ticket_id")
+            placed_at = get_cell("placed_at")
+            sport = get_cell("sport")
+            description = get_cell("description")
+            bet_type = get_cell("bet_type")
+            risk = parse_number(get_cell("risk"))
+            win_amount = parse_number(get_cell("win_amount"))
+            result = normalize_result(get_cell("result"))
+
+            # Generate synthetic ticket_id if missing
+            if not ticket_id:
+                hash_input = f"{player_id}|{placed_at}|{description}|{risk}"
+                ticket_id = hashlib.md5(hash_input.encode()).hexdigest()[:12]
+
+            wagers.append({
+                "ticket_id": ticket_id,
+                "player_id": player_id,
+                "placed_at": placed_at,
+                "sport": sport,
+                "description": description,
+                "bet_type": bet_type,
+                "risk": risk,
+                "win_amount": win_amount,
+                "result": result,
+            })
+
+        if wagers:
+            break
+
+    return wagers
+
+
+def normalize_result(text: str) -> str:
+    """Normalize bet result status to standard lowercase values."""
+    t = text.lower().strip()
+    if t.startswith("win") or t == "w":
+        return "win"
+    if t.startswith("los") or t == "l":
+        return "loss"
+    if t.startswith("push") or t == "p" or t == "tie":
+        return "push"
+    if t.startswith("cancel") or t == "void" or t == "c":
+        return "cancel"
+    if t == "" or t.startswith("pend") or t == "open" or t == "active":
+        return "pending"
+    return t
 
 
 def parse_number(text):

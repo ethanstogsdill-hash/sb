@@ -60,6 +60,10 @@
                 class="tab-btn px-5 py-2.5 text-sm font-medium rounded-t-lg border-b-2 border-transparent text-gray-400 hover:text-gray-200">
                 Player Profiles
             </button>
+            <button onclick="switchTab('bets')" id="tab-bets"
+                class="tab-btn px-5 py-2.5 text-sm font-medium rounded-t-lg border-b-2 border-transparent text-gray-400 hover:text-gray-200">
+                Bets
+            </button>
             <button onclick="switchTab('payments')" id="tab-payments"
                 class="tab-btn px-5 py-2.5 text-sm font-medium rounded-t-lg border-b-2 border-transparent text-gray-400 hover:text-gray-200">
                 Payments
@@ -168,6 +172,76 @@
             </div>
         </section>
 
+        <!-- Bets Tab -->
+        <section id="section-bets" style="display: none;">
+            <h2 class="text-xl font-semibold mb-4">Bets</h2>
+
+            <!-- Stats Bar -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                    <p class="text-sm text-gray-400">Total Bets</p>
+                    <p id="bet-stat-total" class="text-2xl font-bold">0</p>
+                </div>
+                <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                    <p class="text-sm text-gray-400">Total Risked</p>
+                    <p id="bet-stat-risked" class="text-2xl font-bold">$0</p>
+                </div>
+                <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                    <p class="text-sm text-gray-400">Win / Loss</p>
+                    <p id="bet-stat-record" class="text-2xl font-bold">0 - 0</p>
+                </div>
+                <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                    <p class="text-sm text-gray-400">Pending</p>
+                    <p id="bet-stat-pending" class="text-2xl font-bold text-yellow-400">0</p>
+                </div>
+            </div>
+
+            <!-- Filter Row -->
+            <div class="flex flex-wrap gap-3 mb-4">
+                <input type="text" id="bet-search" placeholder="Search bets..."
+                    oninput="filterBets()"
+                    class="bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-sm text-gray-200 w-48">
+                <select id="bet-sport-filter" onchange="filterBets()"
+                    class="bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-sm text-gray-200">
+                    <option value="">All Sports</option>
+                </select>
+                <select id="bet-result-filter" onchange="filterBets()"
+                    class="bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-sm text-gray-200">
+                    <option value="">All Results</option>
+                    <option value="win">Win</option>
+                    <option value="loss">Loss</option>
+                    <option value="pending">Pending</option>
+                    <option value="push">Push</option>
+                    <option value="cancel">Cancel</option>
+                </select>
+                <select id="bet-player-filter" onchange="filterBets()"
+                    class="bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-sm text-gray-200">
+                    <option value="">All Players</option>
+                </select>
+            </div>
+
+            <!-- Bets Table -->
+            <div class="bg-gray-800 rounded-lg border border-gray-700 overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-750">
+                        <tr class="border-b border-gray-700">
+                            <th class="px-4 py-3 text-left">Date</th>
+                            <th class="px-4 py-3 text-left">Player</th>
+                            <th class="px-4 py-3 text-left">Sport</th>
+                            <th class="px-4 py-3 text-left">Description</th>
+                            <th class="px-4 py-3 text-left">Type</th>
+                            <th class="px-4 py-3 text-right">Risk</th>
+                            <th class="px-4 py-3 text-right">To Win</th>
+                            <th class="px-4 py-3 text-center">Result</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bets-tbody">
+                        <tr><td colspan="8" class="px-4 py-8 text-center text-gray-500">No bets loaded. Click "Refresh Now" to scrape.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
         <!-- Payments Tab -->
         <section id="section-payments" style="display: none;">
             <div class="flex items-center justify-between mb-4">
@@ -204,6 +278,7 @@
     <script src="/static/js/app.js"></script>
     <script src="/static/js/dashboard.js"></script>
     <script src="/static/js/agents.js"></script>
+    <script src="/static/js/bets.js"></script>
     <script src="/static/js/payments.js"></script>
     <script src="/static/js/weeks.js"></script>
 </body>

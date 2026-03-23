@@ -31,6 +31,23 @@ CREATE TABLE IF NOT EXISTS payments (
     FOREIGN KEY (linked_agent_id) REFERENCES agents(id)
 );
 
+CREATE TABLE IF NOT EXISTS bets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ticket_id TEXT UNIQUE,
+    player_id TEXT NOT NULL,
+    agent_id INTEGER,
+    placed_at TEXT,
+    sport TEXT DEFAULT '',
+    description TEXT DEFAULT '',
+    bet_type TEXT DEFAULT '',
+    risk REAL DEFAULT 0,
+    win_amount REAL DEFAULT 0,
+    result TEXT DEFAULT 'pending',
+    raw_data TEXT DEFAULT '{}',
+    scraped_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (agent_id) REFERENCES agents(id)
+);
+
 CREATE TABLE IF NOT EXISTS scrape_log (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     run_type TEXT NOT NULL,
@@ -306,5 +323,109 @@ async def get_weekly_summary(week_start: str):
             "players": 0, "net_wl": 0, "total_owed_to_us": 0,
             "total_we_owe": 0, "total_paid": 0
         }
+    finally:
+        await db.close()
+
+
+# --- Bets CRUD ---
+
+async def upsert_bets(bets_data: list[dict]):
+    db = await get_db()
+    try:
+        count = 0
+        for bet in bets_data:
+            # Resolve agent_id from player_id
+            cursor = await db.execute(
+                "SELECT id FROM agents WHERE account_id = ?",
+                (bet.get("player_id", ""),)
+            )
+            row = await cursor.fetchone()
+            agent_id = row["id"] if row else None
+
+            await db.execute("""
+                INSERT INTO bets (ticket_id, player_id, agent_id, placed_at, sport,
+                                  description, bet_type, risk, win_amount, result, raw_data, scraped_at)
+                VALUES (:ticket_id, :player_id, :agent_id, :placed_at, :sport,
+                        :description, :bet_type, :risk, :win_amount, :result, :raw_data, datetime('now'))
+                ON CONFLICT(ticket_id) DO UPDATE SET
+                    result = excluded.result,
+                    win_amount = excluded.win_amount,
+                    scraped_at = excluded.scraped_at
+            """, {
+                "ticket_id": bet.get("ticket_id", ""),
+                "player_id": bet.get("player_id", ""),
+                "agent_id": agent_id,
+                "placed_at": bet.get("placed_at", ""),
+                "sport": bet.get("sport", ""),
+                "description": bet.get("description", ""),
+                "bet_type": bet.get("bet_type", ""),
+                "risk": bet.get("risk", 0),
+                "win_amount": bet.get("win_amount", 0),
+                "result": bet.get("result", "pending"),
+                "raw_data": json.dumps(bet),
+            })
+            count += 1
+        await db.commit()
+        return count
+    finally:
+        await db.close()
+
+
+async def get_all_bets(sport: str = None, result: str = None,
+                       player_id: str = None, limit: int = 500, offset: int = 0):
+    db = await get_db()
+    try:
+        query = """
+            SELECT b.*, a.account_name, a.real_name
+            FROM bets b
+            LEFT JOIN agents a ON b.agent_id = a.id
+            WHERE 1=1
+        """
+        params = []
+        if sport:
+            query += " AND b.sport = ?"
+            params.append(sport)
+        if result:
+            query += " AND b.result = ?"
+            params.append(result)
+        if player_id:
+            query += " AND b.player_id = ?"
+            params.append(player_id)
+        query += " ORDER BY b.placed_at DESC, b.id DESC LIMIT ? OFFSET ?"
+        params.extend([limit, offset])
+
+        cursor = await db.execute(query, params)
+        rows = await cursor.fetchall()
+        return [dict(row) for row in rows]
+    finally:
+        await db.close()
+
+
+async def get_bet_stats():
+    db = await get_db()
+    try:
+        cursor = await db.execute("""
+            SELECT
+                COUNT(*) as total_bets,
+                COALESCE(SUM(risk), 0) as total_risked,
+                SUM(CASE WHEN result = 'win' THEN 1 ELSE 0 END) as wins,
+                SUM(CASE WHEN result = 'loss' THEN 1 ELSE 0 END) as losses,
+                SUM(CASE WHEN result = 'pending' THEN 1 ELSE 0 END) as pending
+            FROM bets
+        """)
+        row = await cursor.fetchone()
+        return dict(row)
+    finally:
+        await db.close()
+
+
+async def get_bet_sports():
+    db = await get_db()
+    try:
+        cursor = await db.execute(
+            "SELECT DISTINCT sport FROM bets WHERE sport != '' ORDER BY sport"
+        )
+        rows = await cursor.fetchall()
+        return [row["sport"] for row in rows]
     finally:
         await db.close()

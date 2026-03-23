@@ -77,10 +77,12 @@ async function triggerScrape() {
     btn.textContent = "Scraping...";
     try {
         const data = await api("/api/agents/scrape", { method: "POST" });
-        toast(`Scraped ${data.count} agents`, "success");
+        const betMsg = data.bet_count ? `, ${data.bet_count} bets` : "";
+        toast(`Scraped ${data.count} agents${betMsg}`, "success");
         await loadAgents();
         await loadDashboard();
         await loadWeeks();
+        await loadBets();
     } catch (e) {
         toast("Scrape failed: " + e.message, "error");
     } finally {

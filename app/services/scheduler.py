@@ -11,14 +11,17 @@ async def _scrape_loop():
     while True:
         await asyncio.sleep(15 * 60)
         try:
-            from app.services.scraper import scrape_agents
-            from app.database import upsert_agents, log_scrape
+            from app.services.scraper import scrape_all
+            from app.database import upsert_agents, upsert_bets, log_scrape
             from app.utils import compute_week_start
-            agents = await scrape_agents()
+            data = await scrape_all()
+            agents_data = data["agents"]
+            wagers_data = data["wagers"]
             week_start = compute_week_start()
-            count = await upsert_agents(agents, week_start=week_start)
-            await log_scrape("agents", "success", f"Auto-scraped {count} agents", count)
-            logger.info(f"Auto-scrape: {count} agents updated")
+            count = await upsert_agents(agents_data, week_start=week_start)
+            bet_count = await upsert_bets(wagers_data) if wagers_data else 0
+            await log_scrape("agents", "success", f"Auto-scraped {count} agents, {bet_count} bets", count)
+            logger.info(f"Auto-scrape: {count} agents, {bet_count} bets updated")
         except Exception as e:
             from app.database import log_scrape
             await log_scrape("agents", "error", f"Auto-scrape failed: {e}")

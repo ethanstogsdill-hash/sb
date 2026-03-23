@@ -95,7 +95,7 @@ function formatWeekLabel(weekStart) {
 let currentTab = 'weekly';
 function switchTab(tabName) {
     currentTab = tabName;
-    const tabs = ['weekly', 'profiles', 'payments'];
+    const tabs = ['weekly', 'profiles', 'bets', 'payments'];
     tabs.forEach(t => {
         document.getElementById(`section-${t}`).style.display = t === tabName ? '' : 'none';
         const btn = document.getElementById(`tab-${t}`);
@@ -106,6 +106,7 @@ function switchTab(tabName) {
         }
     });
     if (tabName === 'profiles') renderProfiles();
+    if (tabName === 'bets') loadBets();
 }
 
 // Polling loop
@@ -114,6 +115,7 @@ function startPolling() {
     loadDashboard();
     loadAgents();
     loadPayments();
+    loadBets();
     checkGmailStatus();
     loadScrapeStatus();
     loadWeeks();
@@ -122,6 +124,7 @@ function startPolling() {
         loadDashboard();
         loadAgents();
         loadPayments();
+        loadBets();
         loadScrapeStatus();
         loadWeeks();
     }, 30000);

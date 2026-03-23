@@ -12,17 +12,23 @@ PROFILE_DIR = str(Path(__file__).parent.parent.parent / "data" / "chrome_profile
 _executor = ThreadPoolExecutor(max_workers=1)
 
 
-async def scrape_agents() -> list[dict]:
-    """Run scrape_worker.py as a separate process via thread to avoid Windows asyncio issues."""
+async def scrape_all() -> dict:
+    """Run scrape_worker.py and return {"agents": [...], "wagers": [...]}."""
     loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(_executor, _run_worker)
+    return await loop.run_in_executor(_executor, _run_worker_v2)
 
 
-def _run_worker() -> list[dict]:
+async def scrape_agents() -> list[dict]:
+    """Backward-compatible wrapper — returns only agents."""
+    data = await scrape_all()
+    return data["agents"]
+
+
+def _run_worker_v2() -> dict:
     result = subprocess.run(
         [PYTHON_EXE, WORKER_SCRIPT,
          settings.site_url, settings.site_username, settings.site_password, PROFILE_DIR],
-        capture_output=True, text=True, timeout=180,
+        capture_output=True, text=True, timeout=300,
     )
 
     if result.returncode != 0:
@@ -33,4 +39,9 @@ def _run_worker() -> list[dict]:
         except json.JSONDecodeError:
             raise RuntimeError(f"Scrape failed: {err}")
 
-    return json.loads(result.stdout)
+    parsed = json.loads(result.stdout)
+
+    # Backward compat: if output is a plain list, wrap it
+    if isinstance(parsed, list):
+        return {"agents": parsed, "wagers": []}
+    return parsed
