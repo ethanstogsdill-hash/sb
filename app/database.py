@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS agents (
     account_name TEXT,
     real_name TEXT DEFAULT '',
     telegram TEXT DEFAULT '',
+    excluded INTEGER DEFAULT 0,
     win_loss REAL DEFAULT 0,
     balance REAL DEFAULT 0,
     action REAL DEFAULT 0,
@@ -71,6 +72,8 @@ async def init_db():
         columns = [row[1] for row in await cursor.fetchall()]
         if "telegram" not in columns:
             await db.execute("ALTER TABLE agents ADD COLUMN telegram TEXT DEFAULT ''")
+        if "excluded" not in columns:
+            await db.execute("ALTER TABLE agents ADD COLUMN excluded INTEGER DEFAULT 0")
         await db.commit()
     finally:
         await db.close()
@@ -132,13 +135,15 @@ async def get_all_agents():
         await db.close()
 
 
-async def update_agent_profile(agent_id: int, real_name: str | None = None, telegram: str | None = None):
+async def update_agent_profile(agent_id: int, real_name: str | None = None, telegram: str | None = None, excluded: bool | None = None):
     db = await get_db()
     try:
         if real_name is not None:
             await db.execute("UPDATE agents SET real_name = ? WHERE id = ?", (real_name, agent_id))
         if telegram is not None:
             await db.execute("UPDATE agents SET telegram = ? WHERE id = ?", (telegram, agent_id))
+        if excluded is not None:
+            await db.execute("UPDATE agents SET excluded = ? WHERE id = ?", (1 if excluded else 0, agent_id))
         await db.commit()
     finally:
         await db.close()

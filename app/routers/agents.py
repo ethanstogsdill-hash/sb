@@ -14,7 +14,7 @@ async def list_agents():
 
 @router.patch("/{agent_id}")
 async def update_agent(agent_id: int, body: AgentUpdate):
-    await db.update_agent_profile(agent_id, real_name=body.real_name, telegram=body.telegram)
+    await db.update_agent_profile(agent_id, real_name=body.real_name, telegram=body.telegram, excluded=body.excluded)
     return {"ok": True}
 
 

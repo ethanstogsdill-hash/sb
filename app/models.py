@@ -4,6 +4,7 @@ from pydantic import BaseModel
 class AgentUpdate(BaseModel):
     real_name: str | None = None
     telegram: str | None = None
+    excluded: bool | None = None
 
 
 class PaymentLink(BaseModel):

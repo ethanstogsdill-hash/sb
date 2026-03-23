@@ -15,12 +15,18 @@ function renderAgents() {
 function renderProfiles() {
     const tbody = document.getElementById("profiles-tbody");
     if (!allAgents.length) {
-        tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-8 text-center text-gray-500">No players loaded.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-8 text-center text-gray-500">No players loaded.</td></tr>';
         return;
     }
 
     tbody.innerHTML = allAgents.map(a => `
         <tr class="border-b border-gray-700 hover:bg-gray-750 transition">
+            <td class="px-4 py-2 text-center">
+                <input type="checkbox" ${a.excluded ? "checked" : ""}
+                    class="w-4 h-4 accent-indigo-500 cursor-pointer"
+                    onchange="updateAgentProfile(${a.id}, 'excluded', this.checked)"
+                    title="Exclude from peer-to-peer settlement (house account)">
+            </td>
             <td class="px-4 py-2 font-mono text-xs">${esc(a.account_id)}</td>
             <td class="px-4 py-2">${esc(a.account_name)}</td>
             <td class="px-4 py-2">
@@ -57,7 +63,8 @@ async function updateAgentProfile(id, field, value) {
         // Update local state so weekly view stays in sync
         const agent = allAgents.find(a => a.id === id);
         if (agent) agent[field] = value;
-        toast(field === 'telegram' ? "Telegram updated" : "Name updated", "success");
+        const labels = { telegram: "Telegram updated", real_name: "Name updated", excluded: value ? "Marked as house account" : "Unmarked as house account" };
+        toast(labels[field] || "Updated", "success");
     } catch (e) {
         toast("Failed to update: " + e.message, "error");
     }
